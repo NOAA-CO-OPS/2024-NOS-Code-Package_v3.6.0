@@ -1,0 +1,62 @@
+OBJECT                          = SOFTWARE
+  SOFTWARE_ID                   = JULIANLIB
+  SOFTWARE_VERSION_ID           = "V1.3.3"
+
+  OBJECT                        = SOFTWARE_INFORMATION
+    SOFTWARE_NAME               = "JULIAN LIBRARY 1.3.3"
+    SOFTWARE_LICENSE_TYPE       = PUBLIC_DOMAIN
+    DATA_FORMAT                 = "PDS"
+    TECHNICAL_SUPPORT_TYPE      = "FULL"
+    REQUIRED_STORAGE_BYTES      = "300KB"
+    PDS_USER_ID                 = "MSHOWALTER"
+    NODE_ID                     = "RINGS"
+
+    SOFTWARE_DESC               = "
+
+      Software Overview
+      =================
+        A set of subroutines for performing date and time 
+        conversions. Included are routines to parse and format dates
+        and times, to convert between calendar dates and Julian dates,
+        and to convert between Universal Time (UTC), Atomic Time (TAI)
+        and Ephemeris Time (ET).
+
+      Available Support Material
+      ==========================
+        SOURCE, BUILD_PROCEDURE, DOCUMENTATION, SAMPLE_PROGRAMS
+
+      Programming Language
+      ====================
+        ANSI_C, SUN_C, VAX_C, FORTRAN_77
+
+      Platforms Supported
+      ===================
+        UNIX, VMS, MAC OSX, LINUX
+
+      Support Software Required/Used
+      ==============================
+        None"
+
+  END_OBJECT                    = SOFTWARE_INFORMATION
+
+  OBJECT                        = SOFTWARE_ONLINE
+    ON_LINE_IDENTIFICATION      = "HTTP://PDS-RINGS.SETI.ORG/
+                                   TOOLKITS/TOOLKITS.HTML"
+
+/* The correct, case-sensitive URL is:                              */
+/* http://pds-rings.seti.org/toolkits/toolkits.html                 */
+
+    ON_LINE_NAME                = "N/A"
+    NODE_ID                     = RINGS
+    PROTOCOL_TYPE               = URL
+    PLATFORM                    = { "SUN/SUNOS", "VAX/VMS",
+                                    "MAC/OSX", "LINUX" }
+  END_OBJECT                    = SOFTWARE_ONLINE
+
+  OBJECT                        = SOFTWARE_PURPOSE
+    SOFTWARE_PURPOSE            = { "TIME", "DATE", "CALENDAR",
+                                    "EPHEMERIS", "LEAPSECOND" }
+  END_OBJECT                    = SOFTWARE_PURPOSE
+END_OBJECT                      = SOFTWARE
+
+END
