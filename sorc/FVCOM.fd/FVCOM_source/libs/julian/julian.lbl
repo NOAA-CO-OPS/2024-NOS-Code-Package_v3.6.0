@@ -1,0 +1,401 @@
+PDS_VERSION_ID                  = PDS3
+PRODUCT_CREATION_TIME           = 2004-02-26T16:00:00
+NOTE                            = "This is combined-detached PDS label
+for the Julian Library. It labels all the files except AAREADME.TXT,
+which has its own attached label. This file makes it possible to
+include the Library on PDS archive volumes without any modification."
+
+OBJECT                          = FILE
+  FILE_NAME                     = "DATES.C"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 1177
+  ^TEXT                         = "DATES.C"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "C source code for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "FJULIAN.FOR"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 163
+  ^TEXT                         = "FJULIAN.FOR"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "FORTRAN source code for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "FJULIAN.INC"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 68
+  ^TEXT                         = "FJULIAN.INC"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "A FORTRAN include file for the
+Julian Library. See AAREADME.TXT and the file itself for more
+information". 
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "FORMAT.C"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 1057
+  ^TEXT                         = "FORMAT.C"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "C source code for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "FORTRAN.C"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 365
+  ^TEXT                         = "FORTRAN.C"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "C source code for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "FORTRAN.H"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 69
+  ^TEXT                         = "FORTRAN.H"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "A C header file for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "FSTRINGS.FOR"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 144
+  ^TEXT                         = "FSTRINGS.FOR"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "FORTRAN source code for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "JULDATES.C"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 658
+  ^TEXT                         = "JULDATES.C"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "C source code for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "JULIAN.H"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 111
+  ^TEXT                         = "JULIAN.H"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "A C header file for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "LEAPSECS.C"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 681
+  ^TEXT                         = "LEAPSECS.C"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "C source code for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "LEAPSECS.LIS"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 34
+  ^TEXT                         = "LEAPSECS.LIS"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-12-31
+    NOTE                        = "An input file containing a list
+of leap seconds. See AAREADME.TXT and the file itself for more
+information". 
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "MAKEDEC.COM"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 32
+  ^TEXT                         = "MAKEDEC.COM"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "A script to build the Julian
+Library. See AAREADME.TXT for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "MAKEG77.COM"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 34
+  ^TEXT                         = "MAKEG77.COM"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 2005-02-21
+    NOTE                        = "A script to build the Julian
+Library using g77 instead of f77. See AAREADME.TXT for more
+information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "MAKEMAC.COM"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 34
+  ^TEXT                         = "MAKEMAC.COM"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 2004-02-26
+    NOTE                        = "A script to build the Julian
+Library. See AAREADME.TXT for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "MAKESUN.COM"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 34
+  ^TEXT                         = "MAKESUN.COM"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "A script to build the Julian
+Library. See AAREADME.TXT for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "MAKEVMS.COM"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 58
+  ^TEXT                         = "MAKEVMS.COM"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "A script to build the Julian
+Library. See AAREADME.TXT for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "PARSE.C"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 1535
+  ^TEXT                         = "PARSE.C"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "C source code for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "PARSING.TXT"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 126
+  ^TEXT                         = "PARSING.TXT"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "A file describing the date and
+time parsing rules."
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "RINGLIB.H"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 156
+  ^TEXT                         = "RINGLIB.H"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "A C header file for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "RLERRORS.C"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 1414
+  ^TEXT                         = "RLERRORS.C"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "C source code for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "RLMEMORY.C"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 229
+  ^TEXT                         = "RLMEMORY.C"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "C source code for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "SECONDS.C"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 489
+  ^TEXT                         = "SECONDS.C"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "C source code for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "SOFTWARE.CAT"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 62
+  ^TEXT                         = "SOFTWARE.CAT"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "A file containing the PDS
+SOFTWARE_INFORMATION template describing the Julian Library."
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "TAI_ET.C"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 243
+  ^TEXT                         = "TAI_ET.C"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "C source code for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "TCONVERT.FOR"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 193
+  ^TEXT                         = "TCONVERT.FOR"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "FORTRAN source code for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+OBJECT                          = FILE
+  FILE_NAME                     = "UTC_TAI.C"
+  RECORD_TYPE                   = STREAM
+  FILE_RECORDS                  = 257
+  ^TEXT                         = "UTC_TAI.C"
+
+  OBJECT                        = TEXT
+    INTERCHANGE_FORMAT          = ASCII
+    PUBLICATION_DATE            = 1998-06-30
+    NOTE                        = "C source code for the Julian
+Library. See AAREADME.TXT and the file itself for more information".
+
+  END_OBJECT                    = TEXT
+END_OBJECT                      = FILE
+
+END
