@@ -1,0 +1,724 @@
+C----------------------------------------------------------------------------------
+C
+C Program Name:  nos_ofs_create_forcing_obc_nest.f
+C
+C Directory:  /nos/save/Aijun.Zhang/nwprod/nosofs_shared.v2.2.0/sorc/nos_ofs_create_forcing_obc_nest.fd
+C
+C Purpose:    This Program is used to generated lateral open boundary condition files for the nested model 
+C             from the parent model. This program searches all nested open boundary condition files from parent nowcast runs first
+C             and then searches all nested OBC files from parent forecast runs
+C             from START TIME and END TIME.
+C             It concatenates all found OBC files from parent model N/F runs to
+C             generate a open boundary condition file for both nowcast and
+C             forecast simulations. 
+
+C Current contact:   Aijun Zhang
+C         Org:  NOS/CO-OPS/OD   Phone:  301-713-2890 ext. 127 
+C                    aijun.zhang@Noaa.gov 
+C Attributes:
+C  Language:  Fortran
+C  Computer:  WCOSS at NCEP  
+C
+C  Compile command:  gmake -f makefile
+C
+C Subprograms called: nos_ofs_obc_write_netcdf_fvcom.f utility.f
+C
+C Input Data files:
+C nested OBC files generated from parent model runs.
+   
+C Usage:   nos_ofs_create_forcing_obc_fvcom < Fortran_OBC.ctl > Fortran_OBC.log 
+C
+C
+
+C----------------------------------------------------------------------------------
+      parameter (NMAX=9000)
+      include 'netcdf.inc'
+      character*200 OFS,OCEAN_MODEL*10
+      character*200 FIN,FIN_F,FOUT,netcdf_file,FILE_P(200),GRIDFILE
+      character*200 CORMSLOG,BUFFER
+      character*200 START_TIME, END_TIME
+      character*200 START_TIMEm1
+      real*8 jday_start,jbase_date,JULIAN,yearb,monthb,dayb,hourb
+      real*8 jday,jdays,jdaye,jday0,jday_now,jday_next
+      real minlon,minlat,maxlat,maxlon,missvalue
+      LOGICAL FEXIST,USGS_L
+      CHARACTER (LEN=10) BIG_BEN(3),CURRENT_TIME*20,CDATE*8
+      CHARACTER globalstr(9)*120
+      INTEGER DATE_TIME(8)
+      INTEGER BASE_DATE(4)
+      INTEGER KB,KB1,DIMS(4),DIMIDS(5),COUNT(4)
+      INTEGER, allocatable :: NKB(:)
+      INTEGER DAYS_PER_MONTH(12)
+      DATA (DAYS_PER_MONTH(i),I=1,12) /
+     &31,28,31,30,31,30,31,31,30,31,30,31/ 
+      integer grbunit,NCID,NCIDOUT
+      real latsw,lonsw,LaD,LoV,dx_grb
+cc allocatable arrays for parent grid
+      integer, allocatable :: partition(:)
+      real, allocatable :: x(:)
+      real, allocatable :: y(:)
+      real, allocatable :: lon(:)
+      real, allocatable :: lat(:)
+      real, allocatable :: xc(:)
+      real, allocatable :: yc(:)
+      real, allocatable :: lonc(:)
+      real, allocatable :: latc(:)
+      real, allocatable :: siglay(:,:)
+      real, allocatable :: siglev(:,:)
+      real, allocatable :: h(:)
+      integer, allocatable :: nv(:,:)  
+      integer, allocatable :: iint(:)
+      character*26,allocatable :: Times(:)
+      real, allocatable :: time(:)
+      integer, allocatable :: Itime(:)  
+      integer, allocatable :: Itime2(:)
+      real, allocatable :: zeta (:,:)
+      real, allocatable :: ua  (:,:)
+      real, allocatable :: va  (:,:)
+      real, allocatable :: u  (:,:,:)
+      real, allocatable :: v (:,:,:)
+      real, allocatable :: temp  (:,:,:)
+      real, allocatable :: salinity  (:,:,:)
+      real, allocatable :: hyw  (:,:,:)
+
+! temporary arrays
+      real, allocatable :: tmp1d  (:)
+      real, allocatable :: tmp2d  (:,:)
+      real, allocatable :: tmp3d  (:,:,:)
+      real, allocatable :: tmp4d  (:,:,:,:)
+      real*8, allocatable :: dtmp4d  (:,:,:,:)
+      integer, allocatable :: itmp4d  (:,:,:,:)
+      integer, allocatable :: itmp1d (:)
+      real, allocatable :: oned1(:)
+      real, allocatable :: oned2(:)
+      real, allocatable :: oned3(:)
+      real, allocatable :: oned4(:)
+      real, allocatable :: outm(:,:)
+!-----------------------------------------------------------------------
+!  read parameters from the Fortran control "Fortran_OBC.ctl"
+!-----------------------------------------------------------------------
+      read(5,'(a200)')OFS
+      read(5,'(a10)')OCEAN_MODEL
+ !     USGSBUFR=trim(adjustL(BUFFER))
+      read(5,'(a200)')BUFFER
+      START_TIME=trim(adjustL(BUFFER))
+      read(START_TIME,'(I4,4I2)')IYRS,IMMS,IDDS,IHHS,IMNS
+      read(5,'(a200)')BUFFER
+      END_TIME=trim(adjustL(BUFFER))
+      read(END_TIME,'(I4,4I2)')IYRE,IMME,IDDE,IHHE,IMNE
+!      read(5,*)IYRS,IMMS,IDDS,IHHS
+!      read(5,*)FORHRS
+      read(5,'(a200)')BUFFER
+      do i=1,len_trim(BUFFER)
+         if(BUFFER(i:I) .eq. "'" .or. BUFFER(i:I) .eq. '"')then
+	    BUFFER(i:I)=' '
+	 endif    
+      enddo
+      netcdf_file=trim(adjustL(BUFFER))
+      read(5,'(a200)')BUFFER
+      do i=1,len_trim(BUFFER)
+          if(BUFFER(i:I) .eq. "'" .or. BUFFER(i:I) .eq. '"')then
+	    BUFFER(i:I)=' '
+	  endif    
+      enddo
+      CORMSLOG=trim(adjustL(BUFFER))
+      print *,'CORMSLOG=',trim(CORMSLOG)
+      read(5,'(a200)')BUFFER
+      do i=1,len_trim(BUFFER)
+         if(BUFFER(i:I) .eq. "'" .or. BUFFER(i:I) .eq. '"')then
+            BUFFER(i:I)=' '
+	 endif    
+      enddo
+      BUFFER=trim(adjustL(BUFFER))
+      read(BUFFER,'(I4,3i2)')base_date
+      read(5,*)KB
+      KB1=KB+1
+      allocate (NKB(KB1))
+      read(5,*)(NKB(I),I=1,KB1)
+      yearb=base_date(1)
+      monthb=base_date(2)
+      dayb=base_date(3)
+      hourb=base_date(4)
+      jbase_date=JULIAN(yearb,monthb,dayb,hourb)
+      yearb=IYRS
+      monthb=IMMS
+      dayb=IDDS
+      hourb=IHHS   !! do not need minutes to construct ETSS file name
+      jdays=JULIAN(yearb,monthb,dayb,hourb)
+      day_start=jdays-jbase_date
+      yearb=IYRE
+      monthb=IMME
+      dayb=IDDE
+      hourb=IHHE   !! do not need minutes to construct ETSS file name
+      jdaye=JULIAN(yearb,monthb,dayb,hourb)
+      day_end=jdaye-jbase_date
+
+      ICORMS=43
+      CLOSE(ICORMS)
+      OPEN(ICORMS,FILE=trim(CORMSLOG),STATUS='OLD',POSITION='APPEND')
+      WRITE(ICORMS,'(a)')'BEGIN SECTION OF GENERATING OBC'
+
+
+!-----------------------------------------------------------------------
+C  Set global attributes string of the NetCDF
+!-----------------------------------------------------------------------
+1     format(I2.2,a1,I2.2,2x,I2.2,a1,i2.2,a1,I4)
+      CALL DATE_AND_TIME(BIG_BEN(1),BIG_BEN(2),BIG_BEN(3),DATE_TIME)
+      WRITE(CURRENT_TIME,1)DATE_TIME(5),':',DATE_TIME(6),
+     &DATE_TIME(2),'/',DATE_TIME(3),'/',DATE_TIME(1)
+      globalstr(1)= trim(OCEAN_MODEL)
+     & //' lateral open boundary forcing netCDF file'
+      globalstr(2)= trim(OFS)//' lateral open boundary netCDF file'
+      globalstr(3)= 'Water level OBC from NGOFS'
+      globalstr(4)= 'T and S OBC from NGOFS'
+      globalstr(5)= ' On '//trim(OFS)//' model grid'
+      globalstr(6)= trim(netcdf_file)
+      globalstr(7)= 'nos_ofs_create_forcing_obc_nest.f'
+      globalstr(8)= 'Created at time '//trim(CURRENT_TIME)
+      globalstr(9)='Created by Aijun Zhang, OD/CO-OPS/NOS/NOAA'
+
+c------------------------------------------------------------------
+C  find all nested OBC files from nowcast runs of parent model in time period to cover from start time to end time 
+c------------------------------------------------------------------
+      jday=jdays
+      N=0
+20    continue
+      if (jday .le. jdaye)then
+        call GREGORIAN(jday,yearb,monthb,dayb,hourb)
+        IYR=INT(yearb)
+        IMM=int(monthb+0.001)
+        IDD=INT(dayb+0.001)
+        IHH=INT(hourb+0.001)
+        IMN=INT((hourb-IHH)*60+0.1)
+        ISEC=0
+        IF(ISEC .EQ. 60)THEN
+           ISEC=0
+           IMN=IMN+1
+        ENDIF
+        IF(IMN .EQ. 60)THEN
+           IMN=0
+           IHH=IHH+1
+        ENDIF
+        IF(IHH .EQ. 24)THEN
+          IHH=0
+          IDD=IDD+1
+          IF(MOD(IYR,4) .EQ. 0)DAYS_PER_MONTH(2)=29   !!    Leap Year
+          IF(IDD .GT. DAYS_PER_MONTH(IMM) )THEN
+             IDD=IDD - DAYS_PER_MONTH(IMM)
+             IMM=IMM+1
+             IF(IMM .GT. 12)THEN
+                IMM=IMM-12
+                IYR=IYR+1
+             ENDIF
+          ENDIF
+        ENDIF
+        WRITE(CDATE,'(I4.4,2I2.2)')IYR,IMM,IDD
+        buffer='/com/nos/para/ngofs.'//CDATE//'/nos.ngofs.nestnode.'
+        FIN=trim(buffer)//trim(OFS)//'.nowcast.'//CDATE
+        FIN_F=trim(buffer)//trim(OFS)//'.forecast.'//CDATE
+
+        write(buffer,'(a2,I2.2,a4)')'.t',IHH,'z.nc'
+        FIN=trim(FIN)//trim(buffer)
+        FIN_F=trim(FIN_F)//trim(buffer)
+ !       WRITE(*,*)'FIN=',trim(FIN)   
+        INQUIRE(FILE=trim(FIN),EXIST=FEXIST)
+        IF(FEXIST)THEN
+         INQUIRE(FILE=trim(FIN_F),EXIST=FEXIST)
+         IF(FEXIST)THEN
+           N=N+1
+           FILE_P(N)=trim(FIN)
+           jday_now=jday
+         ENDIF
+        ENDIF
+        jday=jday+1/24.
+        goto 20 
+      ENDIF
+C  -----------------------------
+c    find all nested OBC files from forecast runs of parent model in time period to cover from start time to end time 
+C -----------------------------
+      jday=jday_now 
+30    continue
+      if (jday .le. jdaye)then
+        call GREGORIAN(jday,yearb,monthb,dayb,hourb)
+        IYR=INT(yearb)
+        IMM=int(monthb+0.001)
+        IDD=INT(dayb+0.001)
+        IHH=INT(hourb+0.001)
+        IMN=INT((hourb-IHH)*60+0.1)
+        ISEC=0
+        IF(ISEC .EQ. 60)THEN
+           ISEC=0
+           IMN=IMN+1
+        ENDIF
+        IF(IMN .EQ. 60)THEN
+           IMN=0
+           IHH=IHH+1
+        ENDIF
+        IF(IHH .EQ. 24)THEN
+          IHH=0
+          IDD=IDD+1
+          IF(MOD(IYR,4) .EQ. 0)DAYS_PER_MONTH(2)=29   !!    Leap Year
+          IF(IDD .GT. DAYS_PER_MONTH(IMM) )THEN
+             IDD=IDD - DAYS_PER_MONTH(IMM)
+             IMM=IMM+1
+             IF(IMM .GT. 12)THEN
+                IMM=IMM-12
+                IYR=IYR+1
+             ENDIF
+          ENDIF
+        ENDIF
+        WRITE(CDATE,'(I4.4,2I2.2)')IYR,IMM,IDD
+        buffer='/com/nos/para/ngofs.'//CDATE//'/nos.ngofs.nestnode.'
+        FIN=trim(buffer)//trim(OFS)//'.forecast.'//CDATE
+        write(buffer,'(a2,I2.2,a4)')'.t',IHH,'z.nc'
+        FIN=trim(FIN)//trim(buffer)
+ !       WRITE(*,*)'FIN=',trim(FIN)   
+        INQUIRE(FILE=trim(FIN),EXIST=FEXIST)
+        IF(FEXIST)THEN
+         N=N+1
+         FILE_P(N)=trim(FIN)
+         jday_now=jday
+        ENDIF
+        jday=jday+1/24.
+        goto 30 
+      ENDIF
+  
+      NFILE=N
+      IF (NFILE .LE. 0)THEN
+        WRITE(*,*)'NO nested OBC files are found'
+        WRITE(*,*)'failures occurred in generating OBC file'
+        STOP
+      ENDIF 
+      DO I=1,NFILE
+       WRITE(*,*)'FIN=',trim(FILE_P(I))
+      ENDDO
+      FIN=trim(FILE_P(1))
+      STATUS = NF_OPEN(trim(FIN), NF_NOWRITE, NCID)
+      STATUS = NF_INQ(NCID,NDIMS,NVARS,NGATTS,UNLIMDIMID)
+C   NDIMS=number of dimension parameters
+C   NVARS=number of total variables in the netcdf file
+C   NGATTS= number of global attributes
+C   UNLIMDIMID= dimension ID which is unlimited.
+!      PRINT *,'NDIMS=',NDIMS,NVARS,NGATTS,UNLIMDIMID
+      DO I=1,NDIMS
+          STATUS = NF_INQ_DIM(NCID,i,BUFFER,ILATID)  !! extract dimension name
+          STATUS = NF_INQ_DIMLEN(NCID,i,ILATID)
+          IF (trim(BUFFER) .eq. 'nele')then
+              NELE=ILATID
+          ELSEIF((trim(BUFFER) .eq. 'node'))then
+             NODE=ILATID
+          ELSEIF (trim(BUFFER) .eq. 'siglay')then
+              NSIGLAY=ILATID
+          ELSEIF (trim(BUFFER) .EQ. 'siglev')THEN
+              NSIGLEV=ILATID
+          ELSEIF (trim(BUFFER) .EQ. 'time' )THEN
+              NT=ILATID
+          endif
+      ENDDO
+      WRITE(*,*)NELE,NODE,NSIGLAY,NSIGLEV,NT
+cc allocate arrays for parent grid
+      allocate (partition(NELE))
+      allocate (x(NODE))
+      allocate (y(NODE))
+      allocate (lon(NODE))
+      allocate (lat(NODE))
+      allocate (xc(NELE))
+      allocate (yc(NELE))
+      allocate (lonc(NELE))
+      allocate (latc(NELE))
+      allocate ( siglay(NODE,KB))
+      allocate ( siglev(NODE,KB1))
+      allocate (h(NODE))
+      allocate ( nv(NELE,3))
+
+      allocate  (iint(NMAX))
+      allocate ( Times(NMAX))
+      allocate ( time(NMAX))
+      allocate ( Itime(NMAX))  
+      allocate ( Itime2(NMAX))
+      allocate ( zeta (NODE,NMAX))
+      allocate ( ua  (NELE,NMAX))
+      allocate ( va  (NELE,NMAX))
+      allocate ( u  (NELE,KB,NMAX))
+      allocate ( v (NELE,KB,NMAX))
+      allocate ( temp  (NODE,KB,NMAX))
+      allocate ( salinity  (NODE,KB,NMAX))
+      allocate ( hyw  (NODE,KB1,NMAX))
+
+      DO NN=1,NODE   
+      DO K=1,KB1
+      DO I=1,NMAX
+          hyw(NN,K,I)=0.0   !! AJ  10/30/2013 there are NaN in NGOFS outputs
+      ENDDO
+      ENDDO
+      ENDDO
+
+
+      STATUS = NF_INQ_VARID(NCID,'patition',IDVAR)
+      STATUS = NF_GET_VAR_INT(NCID,IDVAR,partition)
+      STATUS = NF_INQ_VARID(NCID,'x',IDVAR)
+      STATUS = NF_GET_VAR_REAL(NCID,IDVAR,x)
+      STATUS = NF_INQ_VARID(NCID,'y',IDVAR)
+      STATUS = NF_GET_VAR_REAL(NCID,IDVAR,y)
+      STATUS = NF_INQ_VARID(NCID,'lon',IDVAR)
+      STATUS = NF_GET_VAR_REAL(NCID,IDVAR,lon)
+      STATUS = NF_INQ_VARID(NCID,'lat',IDVAR)
+      STATUS = NF_GET_VAR_REAL(NCID,IDVAR,lat)
+      STATUS = NF_INQ_VARID(NCID,'xc',IDVAR)
+      STATUS = NF_GET_VAR_REAL(NCID,IDVAR,xc)
+      STATUS = NF_INQ_VARID(NCID,'yc',IDVAR)
+      STATUS = NF_GET_VAR_REAL(NCID,IDVAR,yc)
+      STATUS = NF_INQ_VARID(NCID,'lonc',IDVAR)
+      STATUS = NF_GET_VAR_REAL(NCID,IDVAR,lonc)
+      STATUS = NF_INQ_VARID(NCID,'latc',IDVAR)
+      STATUS = NF_GET_VAR_REAL(NCID,IDVAR,latc)
+      STATUS = NF_INQ_VARID(NCID,'h',IDVAR)
+      STATUS = NF_GET_VAR_REAL(NCID,IDVAR,h)
+      STATUS = NF_INQ_VARID(NCID,'nv',IDVAR)
+      STATUS = NF_GET_VAR_INT(NCID,IDVAR,nv)
+      DO I=1,4
+        DIMS(I)=1
+      ENDDO
+      STATUS = NF_INQ_VARID(NCID,'siglay',IDVAR)
+      STATUS = NF_INQ_VARNDIMS(NCID,IDVAR,NDIMS)
+      status = NF_INQ_VARDIMID(NCID,IDVAR,dimids)
+      do i=1,NDIMS
+           STATUS = NF_INQ_DIMLEN(NCID,dimids(i),DIMS(i))
+ !        write(*,*) TRIM(VNAME),' dim ',i,' = ',DIMS(i)
+      enddo
+      IF (ALLOCATED(tmp4d)) DEALLOCATE(tmp4d)
+      ALLOCATE(tmp4d(DIMS(1),DIMS(2),DIMS(3),DIMS(4)) )
+      STATUS = NF_GET_VAR_REAL(NCID,IDVAR,tmp4d)
+      DO N=1,NODE
+      DO I=1,KB
+        siglay(N,I)=tmp4d(N,NKB(I),1,1) 
+      ENDDO
+      ENDDO
+      DO I=1,4
+        DIMS(I)=1
+      ENDDO
+      STATUS = NF_INQ_VARID(NCID,'siglev',IDVAR)
+      STATUS = NF_INQ_VARNDIMS(NCID,IDVAR,NDIMS)
+      status = NF_INQ_VARDIMID(NCID,IDVAR,dimids)
+      do i=1,NDIMS
+           STATUS = NF_INQ_DIMLEN(NCID,dimids(i),DIMS(i))
+ !        write(*,*) TRIM(VNAME),' dim ',i,' = ',DIMS(i)
+      enddo
+      IF (ALLOCATED(tmp4d)) DEALLOCATE(tmp4d)
+      ALLOCATE(tmp4d(DIMS(1),DIMS(2),DIMS(3),DIMS(4)) )
+      STATUS = NF_GET_VAR_REAL(NCID,IDVAR,tmp4d)
+      DO N=1,NODE
+        DO I=1,KB1
+          siglev(N,I)=tmp4d(N,NKB(I),1,1) 
+        ENDDO
+      ENDDO
+      STATUS = NF_CLOSE (NCID)
+      NTOL0=0
+      time_last=-99999.9
+      DO N=1,NFILE
+        FIN=trim(FILE_P(N))
+        write(*,*)trim(fin)
+        STATUS = NF_OPEN(trim(FIN), NF_NOWRITE, NCID)
+        DO I=1,4
+          DIMS(I)=1
+        ENDDO
+        STATUS = NF_INQ_VARID(NCID,'Itime',IDVAR)
+        STATUS = NF_INQ_VARNDIMS(NCID,IDVAR,NDIMS)
+        status = NF_INQ_VARDIMID(NCID,IDVAR,dimids)
+        do i=1,NDIMS
+           STATUS = NF_INQ_DIMLEN(NCID,dimids(i),DIMS(i))
+!          write(*,*) ' Itime dim ',i,' = ',DIMS(i)
+        enddo
+        NT=DIMS(1)
+        IF (ALLOCATED(itmp4d)) DEALLOCATE(itmp4d)
+        ALLOCATE(itmp4d(DIMS(1),DIMS(2),DIMS(3),DIMS(4)) )
+        IF (ALLOCATED(itmp1d)) DEALLOCATE(itmp1d)
+        ALLOCATE(itmp1d(DIMS(1)) )
+        STATUS = NF_GET_VAR_INT(NCID,IDVAR,itmp4d)
+        STATUS = NF_INQ_VARID(NCID,'Itime2',IDVAR)
+        STATUS = NF_GET_VAR_INT(NCID,IDVAR,itmp1d)
+        DO I=1,NT
+         tmp4d(I,1,1,1)=itmp4d(I,1,1,1)+itmp1d(I)/(86400.0*1000)
+        ENDDO
+!        STATUS = NF_GET_ATT_TEXT(NCID,IDVAR,'units',BUFFER)
+!        BUFFER=trim(adjustL(BUFFER))
+!        LL=INDEX(BUFFER,'since')
+!        READ(BUFFER(LL+6:,LL+19),'(I4,ax,I2,ix,I2,1x,I2)')
+!     1 IYR,IMM,IDD,IHH
+!        yearb=IYR
+!        monthb=IMM
+!        dayb=IDD
+!        hourb=IHH   !! do not need minutes to construct ETSS file name
+!        jday0=JULIAN(yearb,monthb,dayb,hourb)
+        DO I=1,DIMS(1)
+         time_tmp=tmp4d(I,1,1,1)    !!  +jday0-jbase_date
+         if (time_tmp .GT. time_last)then
+           I0=I
+           goto 100
+         endif
+        ENDDO
+100     CONTINUE
+        print *,'I0=',I0
+        DO I=I0,NT
+          II=NTOL0+(I-I0)+1
+          time(II)=tmp4d(I,1,1,1)  !! +jday0-jbase_date
+          Itime(II)=itmp4d(I,1,1,1)   !!+jday0-jbase_date
+          Itime2(II)=itmp1d(I)           
+        ENDDO
+        STATUS = NF_INQ_VARID(NCID,'iint',IDVAR)
+        STATUS = NF_GET_VAR_INT(NCID,IDVAR,itmp1d)
+        DO I=I0,NT
+          II=NTOL0+(I-I0)+1
+          IINT(II)=itmp1d(I)           
+        ENDDO
+        DO I=1,4
+          DIMS(I)=1
+        ENDDO
+        STATUS = NF_INQ_VARID(NCID,'zeta',IDVAR)
+        STATUS = NF_INQ_VARNDIMS(NCID,IDVAR,NDIMS)
+        status = NF_INQ_VARDIMID(NCID,IDVAR,dimids)
+        do i=1,NDIMS
+           STATUS = NF_INQ_DIMLEN(NCID,dimids(i),DIMS(i))
+!          write(*,*) ' zeta dim ',i,' = ',DIMS(i)
+        enddo
+        IF (ALLOCATED(tmp4d)) DEALLOCATE(tmp4d)
+        ALLOCATE(tmp4d(DIMS(1),DIMS(2),DIMS(3),DIMS(4)) )
+        STATUS = NF_GET_VAR_REAL(NCID,IDVAR,tmp4d)
+        DO NN=1,NODE
+        DO I=I0,NT
+          II=NTOL0+(I-I0)+1
+          zeta(NN,II)=tmp4d(NN,I,1,1)
+        ENDDO
+        ENDDO
+        DO I=1,4
+          DIMS(I)=1
+        ENDDO
+        STATUS = NF_INQ_VARID(NCID,'temp',IDVAR)
+        STATUS = NF_INQ_VARNDIMS(NCID,IDVAR,NDIMS)
+        status = NF_INQ_VARDIMID(NCID,IDVAR,dimids)
+        do i=1,NDIMS
+           STATUS = NF_INQ_DIMLEN(NCID,dimids(i),DIMS(i))
+!          write(*,*) ' temp dim ',i,' = ',DIMS(i)
+        enddo
+        IF (ALLOCATED(tmp4d)) DEALLOCATE(tmp4d)
+        ALLOCATE(tmp4d(DIMS(1),DIMS(2),DIMS(3),DIMS(4)) )
+        STATUS = NF_GET_VAR_REAL(NCID,IDVAR,tmp4d)
+        DO NN=1,DIMS(1)
+        DO K=1,KB
+        DO I=I0,NT
+          II=NTOL0+(I-I0)+1
+          temp(NN,K,II)=tmp4d(NN,NKB(K),I,1)
+        ENDDO
+        ENDDO
+        ENDDO
+        STATUS = NF_INQ_VARID(NCID,'salinity',IDVAR)
+    
+        STATUS = NF_GET_VAR_REAL(NCID,IDVAR,tmp4d)
+        DO NN=1,DIMS(1)
+        DO K=1,KB
+        DO I=I0,NT
+          II=NTOL0+(I-I0)+1
+          salinity(NN,K,II)=tmp4d(NN,NKB(K),I,1)
+        ENDDO
+        ENDDO
+        ENDDO
+        DO I=1,4
+          DIMS(I)=1
+        ENDDO
+        STATUS = NF_INQ_VARID(NCID,'u',IDVAR)
+        STATUS = NF_INQ_VARNDIMS(NCID,IDVAR,NDIMS)
+        status = NF_INQ_VARDIMID(NCID,IDVAR,dimids)
+        do i=1,NDIMS
+           STATUS = NF_INQ_DIMLEN(NCID,dimids(i),DIMS(i))
+!          write(*,*) ' u dim ',i,' = ',DIMS(i)
+        enddo
+        IF (ALLOCATED(tmp4d)) DEALLOCATE(tmp4d)
+        ALLOCATE(tmp4d(DIMS(1),DIMS(2),DIMS(3),DIMS(4)) )
+        STATUS = NF_GET_VAR_REAL(NCID,IDVAR,tmp4d)
+        DO NN=1,DIMS(1)
+        DO K=1,KB
+        DO I=I0,NT
+          II=NTOL0+(I-I0)+1
+          u(NN,K,II)=tmp4d(NN,NKB(K),I,1)
+        ENDDO
+        ENDDO
+        ENDDO
+        STATUS = NF_INQ_VARID(NCID,'v',IDVAR)
+    
+        STATUS = NF_GET_VAR_REAL(NCID,IDVAR,tmp4d)
+        DO NN=1,DIMS(1)
+        DO K=1,KB
+        DO I=I0,NT
+          II=NTOL0+(I-I0)+1
+          v(NN,K,II)=tmp4d(NN,NKB(K),I,1)
+        ENDDO
+        ENDDO
+        ENDDO
+        DO I=1,4
+          DIMS(I)=1
+        ENDDO
+        STATUS = NF_INQ_VARID(NCID,'ua',IDVAR)
+        STATUS = NF_INQ_VARNDIMS(NCID,IDVAR,NDIMS)
+        status = NF_INQ_VARDIMID(NCID,IDVAR,dimids)
+        do i=1,NDIMS
+           STATUS = NF_INQ_DIMLEN(NCID,dimids(i),DIMS(i))
+ !         write(*,*) ' ua dim ',i,' = ',DIMS(i)
+        enddo
+        IF (ALLOCATED(tmp4d)) DEALLOCATE(tmp4d)
+        ALLOCATE(tmp4d(DIMS(1),DIMS(2),DIMS(3),DIMS(4)) )
+        STATUS = NF_GET_VAR_REAL(NCID,IDVAR,tmp4d)
+        DO NN=1,DIMS(1)
+        DO I=I0,NT
+          II=NTOL0+(I-I0)+1
+          ua(NN,II)=tmp4d(NN,I,1,1)
+        ENDDO
+        ENDDO
+        
+        STATUS = NF_INQ_VARID(NCID,'va',IDVAR)
+    
+        STATUS = NF_GET_VAR_REAL(NCID,IDVAR,tmp4d)
+        DO NN=1,DIMS(1)
+        DO I=I0,NT
+          II=NTOL0+(I-I0)+1
+          va(NN,II)=tmp4d(NN,I,1,1)
+        ENDDO
+        ENDDO
+        DO I=1,4
+          DIMS(I)=1
+        ENDDO
+!        STATUS = NF_INQ_VARID(NCID,'hyw',IDVAR)
+!        STATUS = NF_INQ_VARNDIMS(NCID,IDVAR,NDIMS)
+!        status = NF_INQ_VARDIMID(NCID,IDVAR,dimids)
+!        do i=1,NDIMS
+!           STATUS = NF_INQ_DIMLEN(NCID,dimids(i),DIMS(i))
+!          write(*,*) ' time dim ',i,' = ',DIMS(i)
+!        enddo
+!        IF (ALLOCATED(tmp4d)) DEALLOCATE(tmp4d)
+!        ALLOCATE(tmp4d(DIMS(1),DIMS(2),DIMS(3),DIMS(4)) )
+!        STATUS = NF_GET_VAR_REAL(NCID,IDVAR,tmp4d)
+!        DO NN=1,NODE   !DIMS(1)
+!        DO K=1,KB1
+!        DO I=I0,NMAX
+!          II=NTOL0+(I-I0)+1
+!          hyw(NN,K,II)=0.0   !! AJ  10/30/2013 there are NaN in NGOFS outputs tmp4d(NN,NKB(K),I,1)
+!        ENDDO
+!        ENDDO
+!        ENDDO
+
+        NTOL0=II
+        time_last=time(NTOL0)
+        STATUS = NF_CLOSE(NCID)
+      ENDDO
+      DO I=1,NTOL0
+            jday=Itime(I)+jbase_date
+            call GREGORIAN(jday,yearb,monthb,dayb,hourb)
+            IYR=INT(yearb)
+            IMM=int(monthb+0.001)
+            IDD=INT(dayb+0.001)
+            IHH=INT(hourb+0.001)
+            IMN=INT((hourb-IHH)*60+0.1)
+            ISEC=0
+            IF(ISEC .EQ. 60)THEN
+              ISEC=0
+              IMN=IMN+1
+            ENDIF
+            IF(IMN .EQ. 60)THEN
+             IMN=0
+             IHH=IHH+1
+            ENDIF
+            IF(IHH .EQ. 24)THEN
+              IHH=0
+              IDD=IDD+1
+              IF(MOD(IYR,4) .EQ. 0)DAYS_PER_MONTH(2)=29   !!    Leap Year
+              IF(IDD .GT. DAYS_PER_MONTH(IMM) )THEN
+                IDD=IDD - DAYS_PER_MONTH(IMM)
+                IMM=IMM+1
+                IF(IMM .GT. 12)THEN
+                  IMM=IMM-12
+                  IYR=IYR+1
+                ENDIF
+              ENDIF
+            ENDIF
+            IHH=INT(Itime2(I)/(3600000.0+0.1))
+            IMN=INT(Itime2(I)/60000 -IHH*60)
+
+            WRITE(BUFFER,810)IYR,'-',IMM,'-',IDD,'T',IHH,':',IMN,
+     1      ':00.000000'
+810         FORMAT(I4.4,A1,I2.2,A1,I2.2,A1,I2.2,A1,I2.2,A10)
+            Times(I)=trim(adjustL(BUFFER))
+!            Itime(N)=INT(TIME_M(N)+0.01)
+!            Itime2(N)=INT((TIME_M(N)-Itime(N))*86400)*1000
+
+        write(*,*)'I=',I,time(I),Itime(i),itime2(i),iint(I)
+        WRITE(*,*)'Times= ',Times(I)
+      enddo
+C Generate CORMS FLAG Message
+      if ( time(1) .GT. day_start) THEN
+         WRITE(*,*)'The begin time from parent model is later 
+     &   than the begin time the nested model'
+         WRITE(*,*)'CRITICAL FAILURE IN CREATING OBC'
+         WRITE(ICORMS,*)'The begin time from parent model is later
+     &   than the begin time the nested model'
+         WRITE(ICORMS,'(a)')'CRITICAL FAILURE IN CREATING OBC'
+         STOP
+      endif    
+      if ( time(NTOL0) .LT. day_end) THEN
+         WRITE(*,*)'The end time from parent model is earlier
+     &   than the end time the nested model'
+         WRITE(*,*)'CRITICAL FAILURE IN CREATING OBC'
+         WRITE(ICORMS,*)'The end time from parent model is earlier
+     &   than the begin time the nested model'
+         WRITE(ICORMS,'(a)')'CRITICAL FAILURE IN CREATING OBC'
+         STOP
+      endif
+
+!!!   Generate the nested OBC NetCDF 
+      GRIDFILE='nos.'//trim(OFS)//'_grd.dat'
+      imode=1
+       call nos_ofs_write_netCDF_obc_fvcom(GRIDFILE,netcdf_file,
+     & ncidout,imode,1,node,nele,KB,KB1,base_date,
+     & Itime(1),Itime2(1),Times(1),h,lat,lon,latc,lonc,nv,siglay,
+     & siglev,zeta(:,1),temp(:,:,1),salinity(:,:,1),u(:,:,1),
+     & v(:,:,1),ua(:,1),va(:,1),partition,globalstr)
+
+
+!        call nos_ofs_write_netCDF_obc_nest(netcdf_file,
+!     & ncid,imode,1,node,nele,KB,KB1,base_date, 
+!     & x,y,xc,xc,time(1),hyw(:,:,1),iint(1),
+!     & Itime(1),Itime2(1),h,lat,lon,latc,lonc,nv,siglay,
+!     & siglev,zeta(:,1),temp(:,:,1),salinity(:,:,1),u(:,:,1),
+!     & v(:,:,1),ua(:,1),va(:,1),partition,globalstr)
+
+      imode=2
+      Iii=1
+       time_last=-99999.9
+      DO N=1,NTOL0
+       if ( (time(N) .GE. day_start) .AND. 
+     &      (time(N) .GT. time_last) )THEN
+         call nos_ofs_write_netCDF_obc_fvcom(GRIDFILE,netcdf_file,
+     &   ncidout,2,1,node,nele,KB,KB1,base_date,
+     &   Itime(N),Itime2(N),Times(N),h,lat,lon,latc,lonc,nv,siglay,
+     &   siglev,zeta(:,N),temp(:,:,N),salinity(:,:,N),u(:,:,N),
+     &   v(:,:,N),ua(:,N),va(:,N),partition,globalstr)
+!       write(*,*)time(N),Itime(N),Itime2(N)
+         Iii=Iii+1
+         time_last=time(N)
+       endif
+      ENDDO
+
+      imode=3
+
+
+       call nos_ofs_write_netCDF_obc_fvcom(GRIDFILE,netcdf_file,
+     & ncidout,3,1,node,nele,KB,KB1,base_date,
+     & Itime(1),Itime2(1),Times(1),h,lat,lon,latc,lonc,nv,siglay,
+     & siglev,zeta(:,1),temp(:,:,1),salinity(:,:,1),u(:,:,1),
+     & v(:,:,1),ua(:,1),va(:,1),partition,globalstr)
+
+      write(ICORMS,'(a)')'Nested OBC file is COMPLETED SUCCESSFULLY'
+      WRITE(ICORMS,'(a)')'END SECTION OF GENERATING OBC FILE'
+      CLOSE(ICORMS)
+
+      STOP
+      END
+
