@@ -1,0 +1,156 @@
+#!/bin/bash
+set -x
+
+########################################
+# NOS_OFS_PREP 
+########################################
+export PS4=' $SECONDS + '
+date
+export LD_PRELOAD=/apps/prod/netcdf/${netcdf_ver}/intel/${intel_ver}/lib/libnetcdff.so:${LD_PRELOAD}
+export HOMEnos=${HOMEnos:-${PACKAGEROOT}/nosofs.${nosofs_ver:?}}
+###################################
+# Specify NET and RUN Name and model
+####################################
+#export OFS=${OFS:-ngofs}
+export NET=${NET:-nosofs}
+export RUN=${RUN:-$OFS}
+export PREFIXNOS=${PREFIXNOS:-$OFS}
+export CONTINUE_FORECAST=${CONTINUE_FORECAST:-NO}
+# hardcoded SENDDBN = NO for wcofs_da and wcofs_free
+export SENDDBN=${SENDDBN:-NO}
+if [ "${OFS,,}" == "wcofs_da" -o "${OFS,,}" == "wcofs_free" ]; then
+   export SENDDBN='NO' 
+fi
+###############################################################
+# Specify DBN_ALERT_TYPE_???? for different Production envir.
+###############################################################
+export DBN_ALERT_TYPE_NETCDF=${DBN_ALERT_TYPE_NETCDF:-NOS_OFS_FCST_NETCDF}
+export DBN_ALERT_TYPE_NETCDF_LRG=${DBN_ALERT_TYPE_NETCDF_LRG:-NOS_OFS_FCST_NETCDF_LP}
+export DBN_ALERT_TYPE_TEXT=${DBN_ALERT_TYPE_TEXT:-NOS_OFS_FCST_TEXT}
+
+export cycle=t${cyc}z
+
+########################################################
+# Make working directory
+########################################################
+#export DATAROOT=${DATAROOT:-/lfs/h1/ops/$envir/tmp}
+#export DATA=${DATA:-${DATAROOT:?}/nos_${OFS}_prep_${cyc}_$envir}
+export DATA=${DATA:-${DATAROOT:?}/${jobid:?}}
+
+#to start a complete new cycle runs from PRE to NOWCT_FCST, first delete all old working dirs from the previous runs.
+echo "Check for existing working directory for nos_${OFS}_*_${cyc}_${envir}_${nosofs_ver}"
+ls -ltrd ${DATAROOT:?}/nos_${OFS}_*_${cyc}_${envir}_${nosofs_ver} 2> /dev/null
+isWKDirsExist=$?
+if [ $isWKDirsExist -eq 0 ]
+then
+  echo "WARNING! Some of working directories for nos_${OFS} in ${cyc} $envir exist, move out before starting the prep job run!"
+  renameTag=`date +%Y%m%d%H%M`
+  for dir in `ls -d ${DATAROOT:?}/nos_${OFS}_*_${cyc}_${envir}_${nosofs_ver}`
+  do
+    mv $dir ${dir}_${renameTag}
+  done
+fi
+
+if [ ! -d $DATA ]; then
+  mkdir -p $DATA
+  cd $DATA
+else
+  cd $DATA
+  rm -fr $DATA/*
+fi
+
+############################################
+#   Determine Job Output Name on System
+############################################
+export pgmout="OUTPUT.$$"
+export jlogfile=${logfile:-${DATA}/jlogfile}
+
+####################################
+# Specify Execution Areas
+####################################
+export EXECnos=${EXECnos:-${HOMEnos}/exec}
+export FIXnos=${FIXnos:-${HOMEnos}/fix/shared}
+export FIXofs=${FIXofs:-${HOMEnos}/fix/${OFS}}
+export PARMnos=${PARMnos:-${HOMEnos}/parm}
+export USHnos=${USHnos:-${HOMEnos}/ush}
+export SCRIPTSnos=${SCRIPTSnos:-${HOMEnos}/scripts}
+
+###########################################
+# Run setpdy and initialize PDY variables
+###########################################
+setpdy.sh
+. PDY
+#export PDY=20240119
+export time_nowcastend=$PDY${cyc}
+##############################################
+# Define COM directories
+##############################################
+export COMROOT=${COMROOT:-/lfs/h1/ops/${envir}/com}
+export DCOMROOT=${DCOMROOT:-/lfs/h1/ops/${envir}/dcom}
+export COMIN=${COMIN:-$(compath.py ${NET}/${nosofs_ver})/${RUN}.${PDY}}
+export COMOUTroot=${COMOUTroot:-$(compath.py -o ${NET}/${nosofs_ver})}
+export COMOUT=${COMOUT:-$(compath.py -o ${NET}/${nosofs_ver})/${RUN}.${PDY}}
+
+if [ "${OFS,,}" == "wcofs_da" ]; then
+  export OFS_NF='wcofs'
+  export COMrst=${COMOUTroot}
+fi
+
+mkdir -m 775 -p $COMOUT
+
+##############################################
+### Set up input data path
+##############################################
+export COMINnam=${COMINnam:-$(compath.py prod/nam/${nam_ver})}
+export COMINhrrr=${COMINhrrr:-$(compath.py prod/hrrr/${hrrr_ver})}
+export COMINrap=${COMINrap:-$(compath.py prod/rap/${rap_ver})}
+export COMINrtma=${COMINrtma:-$(compath.py prod/rtma/${rtma_ver})}
+export COMINgfs=${COMINgfs:-$(compath.py prod/gfs/${gfs_ver})}
+export COMINetss=${COMINetss:-$(compath.py prod/petss/${petss_ver})}
+export COMINrtofs_2d=${COMINrtofs_2d:-$(compath.py prod/rtofs/${rtofs_ver})}
+export COMINrtofs_3d=${COMINrtofs_3d:-$(compath.py prod/rtofs/${rtofs_ver})}
+export COMINnwm=${COMINnwm:-$(compath.py prod/nwm/${nwm_ver})}
+##############################################
+
+export DCOMINndfd=${DCOMROOT}
+export DCOMINncom=${DCOMROOT}
+export DCOMINusgs=${DCOMROOT}
+export DCOMINports=${DCOMROOT}
+export NOSBUFR=xx012
+export USGSBUFR=xx009
+export CANADAWLBUFR=xx021   ## wl Cananda
+export CANADARVBUFR=xx022  # river Canada
+##################################################################
+####  Log File To Sys Report  
+##################################################################
+export nosjlogfile=${COMOUT}/${PREFIXNOS}.${cycle}.${PDY}.jlogfile.log 
+
+##################################################################
+####  Log File To CORMS
+##################################################################
+export cormslogfile=${COMOUT}/${PREFIXNOS}.${cycle}.${PDY}.corms.log
+
+env  
+
+########################################################
+# Execute the script.
+########################################################
+$SCRIPTSnos/exnos_ofs_prep.sh $OFS
+########################################################
+
+cat $pgmout
+
+postmsg "$jlogfile" "$0 completed normally"
+
+##############################
+# Remove the Temporary working directory
+##############################
+if [ "${KEEPDATA^^}" != YES ]; then
+  rm -rf $DATA
+fi
+if [ $envir == 'dev' ]; then
+  RPTDIR=/lfs/h1/nos/ptmp/$LOGNAME/rpt/${nosofs_ver}
+  cp -p ${RPTDIR}/${OFS}_prep_${cyc}.err ${RPTDIR}/${OFS}_prep_${cyc}.err.${pbsid}
+  cp -p ${RPTDIR}/${OFS}_prep_${cyc}.out ${RPTDIR}/${OFS}_prep_${cyc}.out.${pbsid}
+fi
+date
