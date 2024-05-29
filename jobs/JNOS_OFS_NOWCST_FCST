@@ -1,0 +1,162 @@
+#!/bin/sh
+set -x
+
+
+########################################
+# NOS_OFS_NOWCST_FCST 
+########################################
+export PS4=' $SECONDS + '
+date
+export HOMEnos=${HOMEnos:-${PACKAGEROOT}/nosofs.${nosofs_ver}}
+###################################
+# Specify NET and RUN Name and model
+####################################
+export NET=${NET:-nosofs}
+export RUN=${RUN:-$OFS}
+export PREFIXNOS=${PREFIXNOS:-$OFS}
+# hardcoded SENDDBN = NO for wcofs_da and wcofs_free
+export SENDDBN=${SENDDBN:-NO}
+if [ "${OFS,,}" == "wcofs_da" -o "${OFS,,}" == "wcofs_free" ]; then
+   export SENDDBN='NO'
+fi
+
+###############################################################
+# Specify DBN_ALERT_TYPE_???? for different Production envir.
+###############################################################
+export DBN_ALERT_TYPE_NETCDF=${DBN_ALERT_TYPE_NETCDF:-NOS_OFS_FCST_NETCDF}
+export DBN_ALERT_TYPE_NETCDF_LRG=${DBN_ALERT_TYPE_NETCDF_LRG:-NOS_OFS_FCST_NETCDF_LP}
+export DBN_ALERT_TYPE_TEXT=${DBN_ALERT_TYPE_TEXT:-NOS_OFS_FCST_TEXT}
+
+export cycle=t${cyc}z
+
+########################################################
+# Make working directory
+########################################################
+#export DATAROOT=${DATAROOT:-/lfs/f1/ops/${evnir}/tmp}
+export DATA=${DATA:-${DATAROOT:?}/nos_${OFS}_nf_${cyc}_${envir}_${nosofs_ver}}
+if [ ! -d $DATA ]; then
+  mkdir -p $DATA
+  cd $DATA
+else
+  cd $DATA
+#  rm -fr $DATA/* ## DO NOT DELETE FILES IN CASE RESTARTing FORECAST
+#                 This directory should be removed at the end of this script if the run completes successfully
+fi
+
+############################################
+#   Determine Job Output Name on System
+############################################
+export pgmout="OUTPUT.$$"
+export jlogfile=${jlogfile:-${DATA}/jlogfile}
+
+####################################
+# Specify Execution Areas
+####################################
+export EXECnos=${EXECnos:-${HOMEnos}/exec}
+export FIXnos=${FIXnos:-${HOMEnos}/fix/shared}
+export FIXofs=${FIXofs:-${HOMEnos}/fix/${OFS}}
+export PARMnos=${PARMnos:-${HOMEnos}/parm}
+export USHnos=${USHnos:-${HOMEnos}/ush}
+export SCRIPTSnos=${SCRIPTSnos:-${HOMEnos}/scripts}
+export PYnos=${PYnos:-${HOMEnos}/ush/pysh}
+export LD_PRELOAD=${NETCDF_LIBRARIES}/libnetcdff.so:${LD_PRELOAD}
+#export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${NOSLIBS_DIR}/proj.4-master/lib64
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${HOMEnos}/sorc/FVCOM.fd/FVCOM_source/libs/proj.4-master/lib64
+
+###########################################
+# Run setpdy and initialize PDY variables
+###########################################
+setpdy.sh
+. ./PDY
+
+#export PDY=20240518
+
+export time_nowcastend=$PDY${cyc}
+##############################################
+# Define COM directories
+##############################################
+export COMROOT=${COMROOT:-/lfs/h1/ops/${envir}/com}
+export DCOMROOT=${DCOMROOT:-/lfs/h1/ops/${envir}/dcom}
+export COMIN=${COMIN:-$(compath.py ${NET}/${nosofs_ver})/${RUN}.${PDY}}
+export COMOUTroot=${COMOUTroot:-$(compath.py -o ${NET}/${nosofs_ver})}
+export COMOUT=${COMOUT:-$(compath.py -o ${NET}/${nosofs_ver})/${RUN}.${PDY}}
+
+export DCOMINndfd=${DCOMROOT}
+export DCOMINncom=${DCOMROOT}
+export DCOMINusgs=${DCOMROOT}
+export DCOMINports=${DCOMROOT}
+export NOSBUFR=xx012
+export USGSBUFR=xx009
+export CANADAWLBUFR=xx021   ## wl Cananda
+export CANADARVBUFR=xx022  # river Canada
+
+
+mkdir -m 775 -p $COMOUT
+
+if [ "${OFS,,}" == "wcofs_da" ]; then
+   export OFS_NF='wcofs'
+   export COMrst=${COMOUTroot}
+fi
+
+##############################################
+####  Log File To Sys Report  
+##############################################
+export nosjlogfile=${COMOUT}/${PREFIXNOS}.${cycle}.${PDY}.jlogfile.log 
+
+##############################################
+####  Log File To CORMS
+##############################################
+export cormslogfile=${COMOUT}/${PREFIXNOS}.${cycle}.${PDY}.corms.log
+set +x
+echo "LAUNCH ${RUN} NOWCAST/FORECAST SIMULATIONS at time: " `date ` >> $cormslogfile
+echo "NOWCAST/FORECAST CYCLE IS: " $time_nowcastend >> $cormslogfile
+echo "Start ${RUN} " >> $cormslogfile
+set -x
+
+env  
+##############################################
+# Check if this is for restarting forecast run
+##############################################
+CONTINUE_FORECAST=NO
+CONTINUE_FORECAST_FILE=${RUN}_CONTINUE_FORECAST.t${cyc}z
+
+# for FVCOM-based OFS
+NFILE=`ls -al *${OFS}_restart*.nc *.rst.forecast*.nc | wc -l`
+if [ $NFILE -gt 0 ]; then
+    latest_restart_f=`ls -al *${OFS}_restart*.nc *.rst.forecast*.nc | tail -1 | awk '{print $NF}' `
+else
+   latest_restart_f='blank'
+fi
+#
+
+if [ -s  $latest_restart_f ]; then
+  echo "FOUND restart file for continuous forecast run"
+  CONTINUE_FORECAST=YES
+fi
+export CONTINUE_FORECAST
+########################################################
+# Execute the script.
+########################################################
+if [ $CONTINUE_FORECAST == 'NO' ]; then
+  $SCRIPTSnos/exnos_ofs_nowcast_forecast.sh $OFS
+else
+  $SCRIPTSnos/exnos_ofs_continue_forecast.sh $OFS
+fi
+cat $pgmout
+
+postmsg "$jlogfile" "$0 completed normally"
+
+##############################
+# Remove the Temporary working directory
+##############################
+if [ "${KEEPDATA^^}" != YES ]; then
+  rm -rf $DATA
+fi
+
+if [ $envir == 'dev' ]; then
+  RPTDIR=/lfs/h1/nos/ptmp/$LOGNAME/rpt/${nosofs_ver}
+  cp -p ${RPTDIR}/${OFS}_nf_${cyc}.out ${RPTDIR}/${OFS}_nf_${cyc}.out.${pbsid}
+  cp -p ${RPTDIR}/${OFS}_nf_${cyc}.err ${RPTDIR}/${OFS}_nf_${cyc}.err.${pbsid}
+fi
+
+date
