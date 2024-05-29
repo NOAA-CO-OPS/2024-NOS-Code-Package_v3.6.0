@@ -1,0 +1,126 @@
+************************************************************************
+                        SUMMARY OF PARSING RULES
+
+                           THE JULIAN LIBRARY
+                       Version 1.1, November 1996
+
+                            Mark R. Showalter
+************************************************************************
+
+This file summarizes the rules whereby the parsing routines in
+jul_parse.c interpret date and time character strings.  These rules are
+superficially quite complicated but the have the important property that
+almost any string that follows conventional notation rules will be
+parsed correctly.  In particular, PDS-format and SQL-format strings are
+interpreted correctly.  Ambiguous strings are given their (subjectively)
+"best", interpretation. 
+
+TOKENS
+
+When parsing a character string, the string is first separated into a
+sequence of tokens and delimiters.  A token consists of any sequence of
+letters or digits (but not a mixture of both).  A delimiter is any
+single punctuation character or a single letter if it is separating
+numeric tokens.  A blank is a valid delimiter if no other delimiter is
+present; otherwise blanks are ignored.  For example, the string "4 July,
+76/12h34:56.789" contains seven tokens: {"4", "July", "76", "12", "34",
+"56" and "789"}. The corresponding delimiters are, in order: {blank,
+comma, slash, "h", colon, period and blank}.  Tokens and delimiters are
+not case-sensitive. 
+
+DATE PARSING
+
+A single date token is interpreted as either a four-digit year or as an
+eight-digit merged date of the form "yyyymmdd".  If only the year is 
+given, the date is assumed to be January 1.  No other single-token 
+format is recognized.
+
+A pair of tokens is interpreted as a numeric year plus a day-of-year.
+A year must contain either two or four digits: years between 0 and 49 
+are interpreted as 2000 to 2049; years between 50 and 99 are interpreted 
+as 1950 to 1999.  The day-of-year must fall between 1 and the number of 
+days within the given year; for example, a value of 366 is only
+permitted if the year is a leap year.  The delimiter must be a slash,
+dash, period or blank. 
+
+A set of three tokens is interpreted as a month, day and year in some
+order.  Year values must either two or four digits, as above.  Months
+are integers 1-12 or English names "January"-"December", possibly
+abbreviated to three or more letters.  Days are integers between 1 and
+31 (or less, depending on the month).  The sequence of tokens is
+interpreted in the preferred order (see below), first, then as
+month-day-year, day-month-year, and year-month-day until a valid
+interpretation is found.  The valid delimiters are slash, dash, period
+and blank.  The two delimiters must be the same except for the special
+case "month day, year" where a comma is allowed after the second token. 
+
+The last argument to Jul_ParseDate() and Jul_ParseDT(), if used, enables
+the user to specify the preferred ordering for year, month, and day.  It
+is a three-character string containing a "Y", "M" and "D", where the
+order of the three indicates the preferred ordering for the year, month
+and day, respectively. 
+
+The following strings all parse to July 4, 1976: "7 4 1976" (provided
+"DMY" is not the preferred order), "4 jul 1976", "7-4-76", "19760704",
+"76/186", and "76.186".
+
+TIME PARSING
+
+A time may consist of up to four numeric tokens.  These are interpreted
+as the hour, minute, second and millisecond in that order although not
+all a required; the last token may have a fractional part.  The string
+may end in "AM" or "PM", or else "Z" to be compatible with PDS time
+formats.  Valid delimiters are colons and blanks. 
+
+Individual tokens may also end in "H", "M", or "S" to unambiguously
+indicate hours, minutes, or seconds, respectively.  This enables the
+user to express a time in minutes (without hours) or seconds (without
+hours and minutes).  Each numeric token must fall within the allowed
+range.  For example, the hour must fall between 1 and 12 if AM or PM is
+specified; otherwise it must fall between 0 and 23.  If the minute is
+specified, then the number of seconds must be <60 unless the day has a
+leap second; otherwise the last minute of the day must have <61 seconds.
+
+The following strings all parse to 0:01:02: "0:01:02", "0 1 2", "12h
+62.00s am", "61s", "1 m 2s 000z", and "1 m 2s 000".
+
+DATE-TIME PARSING
+
+A string is tested as a valid Julian date, date + time, or time + date,
+until a valid interpretation is found. 
+
+A Julian date is recognized by a first token of "JD" or "MJD".  If "JD", 
+then the remainder of the string is interpreted as a numeric Julian
+date.  If "MJD", then the remainder of the string is interpreted a
+modified Julian date (equal to Julian date - 2400000.5).  The valid
+delimiters are blank and dash.  For example, the following are valid 
+strings: "JD 2451545", "mjd-51544.50".  Note that the dash is treated as 
+a delimiter, not a sign, so negative numeric values are not recognized.
+
+If this test fails, the string is interpreted as a date followed by a
+time.  The rules for recognizing and interpreting dates and times are
+summarized above.  All possible divisions between the date and the time
+are considered, staring with all the tokens in the date.  Valid
+delimiters between the date and time are blank, slash, dash, colon,
+period and "T" (for compatibility with PDS date/time formats).  If no
+valid interpretation is found, the string is then interpreted as a time
+followed by a date, again starting with all the tokens in the date.  In
+this case the valid delimiters are blank, slash, dash and colon. 
+
+The following strings all parse to 0:01:02 on July 4, 1976:
+"7 4 76 0 1 2" (provided "DMY" is not the preferred order),
+"1976-07-04T00:01:02Z", "July 4, 1976 12:01:02 am", "0 1 2 19760704",
+and "MJD 42963.00071759259" 
+
+Note that the testing goes in the particular order described, so
+ambiguous strings are always given the first possible interpretation. 
+This may not always be the user's intent, so ambiguous strings should be
+avoided.  A useful set of "rules-of-thumb" helps to prevent this from
+happening. 
+
+(1) Use four digits for the year.
+(2) Use numeric "year-month-day" or "year-day" notation or else spell
+out the month with at least three letters. 
+(3) Use colon delimiters between the hours, minutes and seconds, or else
+use explicit "h", "m" and/or "s" indicators in the time.
+
